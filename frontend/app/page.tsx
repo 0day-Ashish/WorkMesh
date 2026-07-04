@@ -1,65 +1,144 @@
-import Image from "next/image";
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { Bell, Search, Globe, ChevronRight } from "lucide-react";
+import { Employee, mockStore } from "./mockStore";
+import Sidebar, { ViewType } from "./components/sidebar";
+import DemoToolbar from "./components/demo-toolbar";
+import AuthViews from "./components/auth-views";
+import DashboardView from "./components/dashboard-view";
+import ProfileView from "./components/profile-view";
+import DepartmentsView from "./components/departments-view";
+import AttendanceView from "./components/attendance-view";
+import LeaveView from "./components/leave-view";
+import PayrollView from "./components/payroll-view";
+import EmployeesView from "./components/employees-view";
 
 export default function Home() {
+  const [user, setUser] = useState<Employee | null>(null);
+  const [activeView, setActiveView] = useState<ViewType>("dashboard");
+  const [isClient, setIsClient] = useState(false);
+
+  // Hydrate client state
+  useEffect(() => {
+    setIsClient(true);
+    setUser(mockStore.getAuthUser());
+  }, []);
+
+  const handleLogout = () => {
+    mockStore.logout();
+    setUser(null);
+    setActiveView("dashboard");
+  };
+
+  const handleUserSwap = (swappedUser: Employee) => {
+    setUser(swappedUser);
+    setActiveView("dashboard");
+  };
+
+  if (!isClient) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  // If user not authenticated, render login/signup card
+  if (!user) {
+    return (
+      <>
+        <AuthViews onAuthSuccess={(authenticatedUser) => setUser(authenticatedUser)} />
+        <DemoToolbar currentUser={user} onUserChanged={handleUserSwap} />
+      </>
+    );
+  }
+
+  // Renders view content based on state
+  const renderActiveView = () => {
+    switch (activeView) {
+      case "dashboard":
+        return <DashboardView user={user} setView={setActiveView} />;
+      case "profile":
+        return <ProfileView user={user} />;
+      case "departments":
+        return <DepartmentsView />;
+      case "attendance":
+        return <AttendanceView user={user} />;
+      case "leave":
+        return <LeaveView user={user} />;
+      case "payroll":
+        return <PayrollView user={user} />;
+      case "employees":
+        return <EmployeesView />;
+      default:
+        return <DashboardView user={user} setView={setActiveView} />;
+    }
+  };
+
+  // Human-readable title resolving
+  const viewTitles: Record<ViewType, string> = {
+    dashboard: "Console Overview",
+    profile: "Employee Profile Vault",
+    attendance: "Daily Shift Records",
+    leave: "Time-Off Ledger",
+    payroll: "Compensation Sheet",
+    employees: "Roster Management",
+    departments: "Corporate Directory Units"
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="flex bg-slate-50 min-h-screen">
+      {/* Sidebar - Left Navigation */}
+      <Sidebar 
+        user={user} 
+        activeView={activeView} 
+        setActiveView={setActiveView} 
+        onLogout={handleLogout} 
+      />
+
+      {/* Main Content Pane */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        {/* Header - Navigation Bar */}
+        <header className="h-16 bg-white border-b border-slate-200/80 px-8 flex items-center justify-between sticky top-0 z-40 no-print">
+          {/* Breadcrumbs */}
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+            <span className="text-slate-400">WorkMesh</span>
+            <ChevronRight className="w-3 h-3 text-slate-400" />
+            <span className="text-slate-800">{viewTitles[activeView]}</span>
+          </div>
+
+          {/* Quick Header Actions */}
+          <div className="flex items-center gap-4">
+            {/* Mock Global Search */}
+            <div className="relative hidden sm:block">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <Search className="w-3.5 h-3.5" />
+              </span>
+              <input
+                type="text"
+                readOnly
+                placeholder="Universal query lookup..."
+                className="bg-slate-50 border border-slate-200 rounded-full pl-9 pr-4 py-1.5 text-[11px] text-slate-400 w-48 outline-none select-none cursor-not-allowed"
+              />
+            </div>
+
+            {/* Notification Bell */}
+            <button className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors relative">
+              <Bell className="w-4 h-4" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-blue-500" />
+            </button>
+          </div>
+        </header>
+
+        {/* Core view content container */}
+        <main className="flex-1 p-8 max-w-7xl w-full mx-auto">
+          {renderActiveView()}
+        </main>
+      </div>
+
+      {/* Floating Demo Toggler */}
+      <DemoToolbar currentUser={user} onUserChanged={handleUserSwap} />
     </div>
   );
 }
