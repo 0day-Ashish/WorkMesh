@@ -5,8 +5,9 @@ import { Bell, Search, Globe, ChevronRight } from "lucide-react";
 import { Employee } from "./mockStore";
 import { apiClient, getAccessToken, clearTokens, parseJwt } from "./apiClient";
 import Sidebar, { ViewType } from "./components/sidebar";
-import DemoToolbar from "./components/demo-toolbar";
+import ChatbotWidget from "./components/ChatbotWidget";
 import AuthViews from "./components/auth-views";
+import LandingPage from "./components/landing-page";
 import DashboardView from "./components/dashboard-view";
 import ProfileView from "./components/profile-view";
 import DepartmentsView from "./components/departments-view";
@@ -19,6 +20,7 @@ export default function Home() {
   const [user, setUser] = useState<any | null>(null);
   const [activeView, setActiveView] = useState<ViewType>("dashboard");
   const [isClient, setIsClient] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const refreshProfile = async () => {
     const token = getAccessToken();
@@ -66,12 +68,28 @@ export default function Home() {
     );
   }
 
-  // If user not authenticated, render login/signup card
+  // If user not authenticated, render landing page with login modal triggers
   if (!user) {
     return (
       <>
-        <AuthViews onAuthSuccess={refreshProfile} />
-        <DemoToolbar currentUser={user} onUserChanged={handleUserSwap} />
+        <LandingPage onGetStarted={() => setShowAuthModal(true)} />
+        {showAuthModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="relative max-w-md w-full">
+              <button 
+                onClick={() => setShowAuthModal(false)}
+                className="absolute top-4 right-4 text-xs font-bold text-slate-500 hover:text-slate-805 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-2 py-1 rounded cursor-pointer transition-colors z-50 font-sans"
+              >
+                Close
+              </button>
+              <AuthViews onAuthSuccess={() => {
+                refreshProfile();
+                setShowAuthModal(false);
+              }} />
+            </div>
+          </div>
+        )}
+        <ChatbotWidget />
       </>
     );
   }
@@ -159,8 +177,8 @@ export default function Home() {
         </main>
       </div>
 
-      {/* Floating Demo Toggler */}
-      <DemoToolbar currentUser={user} onUserChanged={handleUserSwap} />
+      {/* Floating AI Chatbot Widget */}
+      <ChatbotWidget />
     </div>
   );
 }

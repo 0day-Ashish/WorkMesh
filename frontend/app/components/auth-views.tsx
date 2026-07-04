@@ -77,29 +77,27 @@ export default function AuthViews({ onAuthSuccess }: AuthViewsProps) {
   };
 
   return (
-    <div className="flex-1 flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-background min-h-screen">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center items-center gap-2 mb-4">
-          <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shadow-md border border-slate-100 shrink-0">
-            <Image
-              src="/assets/logo.png"
-              alt="WorkMesh Logo"
-              width={40}
-              height={40}
-              className="w-full h-full object-cover"
-            />
+    <div className="flex-1 flex flex-col justify-center py-6 sm:px-6 lg:px-8 w-full max-w-md mx-auto">
+      <div className="bg-[#F2F0EF]/80 backdrop-blur-md py-8 px-4 border border-black rounded-2xl shadow-2xl sm:px-10">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md mb-6">
+          <div className="flex justify-center items-center gap-2 mb-4">
+            <div className="w-10 h-10 shrink-0">
+              <Image
+                src="/assets/logo.png"
+                alt="WorkMesh Logo"
+                width={40}
+                height={40}
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">WorkMesh</h2>
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">WorkMesh</h2>
+          <h3 className="text-center text-xs font-bold text-slate-500 tracking-wider leading-none uppercase">
+            {mode === "login" && "Sign in to your employee portal"}
+            {mode === "signup" && "Register your pre-issued code"}
+            {mode === "forgot" && "Recover your password credentials"}
+          </h3>
         </div>
-        <h3 className="text-center text-sm text-slate-500 font-medium">
-          {mode === "login" && "Sign in to your employee portal"}
-          {mode === "signup" && "Register your pre-issued code"}
-          {mode === "forgot" && "Recover your password credentials"}
-        </h3>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 border border-slate-200/60 rounded-2xl shadow-xl shadow-slate-100 sm:px-10">
           {error && (
             <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-100 text-red-700 text-xs font-semibold flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -169,7 +167,7 @@ export default function AuthViews({ onAuthSuccess }: AuthViewsProps) {
               </button>
 
               <div className="relative flex justify-center text-xs mt-6">
-                <span className="bg-white px-2 text-slate-400 font-medium">Or simulate new hire setup</span>
+                <span className="bg-[#F2F0EF]/80 px-2 text-slate-400 font-medium">Or simulate new hire setup</span>
               </div>
 
               <button
@@ -297,6 +295,5 @@ export default function AuthViews({ onAuthSuccess }: AuthViewsProps) {
           )}
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }

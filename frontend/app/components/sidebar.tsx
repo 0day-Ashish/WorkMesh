@@ -62,13 +62,13 @@ export default function Sidebar({ user, activeView, setActiveView, onLogout }: S
 
       {/* Brand Logo Header */}
       <div className={`h-16 border-b border-slate-100 flex items-center ${isCollapsed ? "justify-center" : "px-6 gap-2.5"}`}>
-        <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center shadow-sm border border-slate-100 shrink-0">
+        <div className="w-8 h-8 shrink-0">
           <Image
             src="/assets/logo.png"
             alt="WorkMesh Logo"
             width={32}
             height={32}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
           />
         </div>
         {!isCollapsed && (
