@@ -9,6 +9,11 @@ import rateLimit from 'express-rate-limit';
 import createAuthRouter from './modules/auth/auth.routes';
 import leaveRouter from './modules/leave/routes/leave.routes';
 import payrollRouter from './modules/payroll/routes/payroll.routes';
+import createEmployeesRouter from './modules/employees/employees.routes';
+import createDepartmentsRouter from './modules/departments/departments.routes';
+import createDocumentsRouter from './modules/documents/documents.routes';
+import createAttendanceRouter from './modules/attendance/attendance.routes';
+import createHolidaysRouter from './modules/holidays/holidays.routes';
 import { errorHandler } from './middlewares/errorHandler';
 
 const app = express();
@@ -66,6 +71,13 @@ app.use('/api', generalLimiter);
 app.use('/api/auth', createAuthRouter(authLimiter));
 app.use('/api/leave', leaveRouter);
 app.use('/api/payroll', payrollRouter);
+
+// Other core routes
+app.use('/api/employees', createEmployeesRouter());
+app.use('/api/departments', createDepartmentsRouter());
+app.use('/api/documents', createDocumentsRouter());
+app.use('/api/attendance', createAttendanceRouter());
+app.use('/api/holidays', createHolidaysRouter());
 
 // Health check
 app.get('/health', (req, res) => {

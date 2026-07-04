@@ -10,6 +10,7 @@ jest.mock('../src/config/db', () => {
   const mockPrisma = {
     employee: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
       update: jest.fn(),
       create: jest.fn(),
     },
@@ -29,6 +30,43 @@ jest.mock('../src/config/db', () => {
       findUnique: jest.fn(),
       delete: jest.fn(),
       deleteMany: jest.fn(),
+    },
+    department: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+      create: jest.fn(),
+      delete: jest.fn(),
+    },
+    document: {
+      findMany: jest.fn(),
+      create: jest.fn(),
+    },
+    attendance: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      findMany: jest.fn(),
+      upsert: jest.fn(),
+    },
+    attendanceRegularization: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+    holiday: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+    },
+    leaveRequest: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+    },
+    leaveBalance: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
     },
     $transaction: jest.fn(),
     $connect: jest.fn(),
