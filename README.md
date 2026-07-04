@@ -133,6 +133,27 @@ npm run dev
 
 ---
 
+## 🔑 Demo Accounts & Credentials
+
+Use the following seeded accounts to log in and test different system roles:
+
+### 👤 Admin Persona
+*   **Email**: `admin@workmesh.com`
+*   **Password**: `AdminPassword123!`
+*   *Access privileges: Manage departments, review leave balances, decide regularization adjustments.*
+
+### 👤 Employee Persona
+*   **Email**: `employee@workmesh.com`
+*   **Password**: `EmployeePassword123!`
+*   *Access privileges: Check in/out punch console, submit leave requests, view payroll compensation ledger.*
+
+### 🆕 Signup Sandbox Codes
+To test registering a new employee profile from scratch, use one of the following unclaimed employee codes during registration:
+*   `EMP002`
+*   `EMP003`
+
+---
+
 ## 🛡️ Core Security Implementations
 
 * **JWT Token Family Rotation**: Automated token lifecycle checks block unauthorized administrative transactions.
