@@ -1,7 +1,7 @@
 // WorkMesh API Client with JWT Auth & Token Refresh Handling
 "use client";
 
-const API_BASE_URL = "http://localhost:5001/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
 export interface DecodedToken {
   id: string; // User ID

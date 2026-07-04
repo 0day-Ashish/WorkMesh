@@ -62,6 +62,15 @@ async function main() {
     data: { user_id: adminUser.id, department_id: hrDept.id },
   });
 
+  // Create default leave balances for Admin
+  await prisma.leaveBalance.createMany({
+    data: [
+      { employee_id: adminEmployee.id, leave_type: "Casual", total: 10, remaining: 10 },
+      { employee_id: adminEmployee.id, leave_type: "Sick", total: 12, remaining: 12 },
+      { employee_id: adminEmployee.id, leave_type: "Earned", total: 15, remaining: 15 },
+    ],
+  });
+
   // Set manager of HR department
   await prisma.department.update({
     where: { id: hrDept.id },
@@ -94,6 +103,15 @@ async function main() {
   await prisma.employee.update({
     where: { id: employee1.id },
     data: { user_id: employeeUser.id, department_id: engDept.id },
+  });
+
+  // Create default leave balances for Employee 1
+  await prisma.leaveBalance.createMany({
+    data: [
+      { employee_id: employee1.id, leave_type: "Casual", total: 10, remaining: 10 },
+      { employee_id: employee1.id, leave_type: "Sick", total: 12, remaining: 12 },
+      { employee_id: employee1.id, leave_type: "Earned", total: 15, remaining: 15 },
+    ],
   });
 
   // 3. Create Unclaimed Employee Codes (for Signup flow testing)

@@ -66,6 +66,15 @@ export class AuthController {
           data: { user_id: user.id },
         });
 
+        // Initialize default leave balances for the new employee
+        await tx.leaveBalance.createMany({
+          data: [
+            { employee_id: employee.id, leave_type: "Casual", total: 10, remaining: 10 },
+            { employee_id: employee.id, leave_type: "Sick", total: 12, remaining: 12 },
+            { employee_id: employee.id, leave_type: "Earned", total: 15, remaining: 15 },
+          ]
+        });
+
         return user;
       });
 
