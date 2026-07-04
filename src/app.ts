@@ -7,6 +7,8 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import createAuthRouter from './modules/auth/auth.routes';
+import leaveRouter from './modules/leave/routes/leave.routes';
+import payrollRouter from './modules/payroll/routes/payroll.routes';
 import { errorHandler } from './middlewares/errorHandler';
 
 const app = express();
@@ -62,6 +64,8 @@ app.use('/api', generalLimiter);
 
 // Auth routes (auth-sensitive endpoints get stricter rate limiting via route-level middleware)
 app.use('/api/auth', createAuthRouter(authLimiter));
+app.use('/api/leave', leaveRouter);
+app.use('/api/payroll', payrollRouter);
 
 // Health check
 app.get('/health', (req, res) => {

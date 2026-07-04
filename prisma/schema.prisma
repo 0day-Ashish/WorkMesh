@@ -37,7 +37,6 @@ model User {
   refresh_tokens      RefreshToken[]
   password_resets     PasswordReset[]
   reviewed_regularizations AttendanceRegularization[] @relation("ReviewedBy")
-  reviewed_leaves      LeaveRequest[]             @relation("ReviewedBy")
   uploaded_documents   Document[]                 @relation("UploadedBy")
 
   @@map("users")
@@ -161,13 +160,12 @@ model LeaveRequest {
   employee_id String
   employee    Employee      @relation(fields: [employee_id], references: [id], onDelete: Cascade)
   leave_type  String
-  start_date  DateTime
-  end_date    DateTime
+  from_date   DateTime
+  to_date     DateTime
+  reason      String
   status      RequestStatus @default(Pending)
-  remarks     String?
-  reviewed_by String?
-  reviewer    User?         @relation("ReviewedBy", fields: [reviewed_by], references: [id])
-  reviewed_at DateTime?
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @updatedAt
 
   @@map("leave_requests")
 }
@@ -177,12 +175,13 @@ model LeaveBalance {
   employee_id String
   employee    Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
   leave_type  String
-  year        Int
   total       Int
   used        Int      @default(0)
   remaining   Int
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
-  @@unique([employee_id, leave_type, year])
+  @@unique([employee_id, leave_type])
   @@map("leave_balances")
 }
 
@@ -193,9 +192,10 @@ model Payroll {
   month        Int
   year         Int
   basic_salary Decimal  @db.Decimal(12, 2)
-  allowances   Decimal  @db.Decimal(12, 2) @default(0.00)
   deductions   Decimal  @db.Decimal(12, 2) @default(0.00)
   net_salary   Decimal  @db.Decimal(12, 2)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
 
   @@unique([employee_id, month, year])
   @@map("payroll")
