@@ -63,6 +63,8 @@ jest.mock('../src/config/db', () => {
     leaveRequest: {
       create: jest.fn(),
       findMany: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
     },
     leaveBalance: {
       findUnique: jest.fn(),

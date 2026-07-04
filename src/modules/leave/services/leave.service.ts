@@ -11,10 +11,10 @@ export class LeaveService {
     return prisma.leaveRequest.create({
       data: {
         employee_id: employeeId,
-        from_date: data.fromDate,
-        to_date: data.toDate,
+        start_date: data.fromDate,
+        end_date: data.toDate,
         leave_type: data.leaveType,
-        reason: data.reason
+        remarks: data.reason
       }
     });
   }
@@ -22,7 +22,7 @@ export class LeaveService {
   public static async getEmployeeLeaveRequests(employeeId: string) {
     return prisma.leaveRequest.findMany({
       where: { employee_id: employeeId },
-      orderBy: { created_at: 'desc' }
+      orderBy: { start_date: 'desc' }
     });
   }
   
@@ -39,7 +39,7 @@ export class LeaveService {
           select: { full_name: true, employee_code: true }
         }
       },
-      orderBy: { created_at: 'desc' }
+      orderBy: { start_date: 'desc' }
     });
   }
   
@@ -65,7 +65,8 @@ export class LeaveService {
       }
 
       // Calculate days
-      const days = Math.ceil((leaveReq.to_date.getTime() - leaveReq.from_date.getTime()) / (1000 * 3600 * 24)) + 1;
+      const days = Math.ceil((leaveReq.end_date.getTime() - leaveReq.start_date.getTime()) / (1000 * 3600 * 24)) + 1;
+      const year = leaveReq.start_date.getUTCFullYear();
       
       const updatedReq = await tx.leaveRequest.update({
         where: { id },
@@ -74,15 +75,16 @@ export class LeaveService {
       
       const balance = await tx.leaveBalance.findUnique({
         where: {
-          employee_id_leave_type: {
+          employee_id_leave_type_year: {
             employee_id: leaveReq.employee_id,
-            leave_type: leaveReq.leave_type
+            leave_type: leaveReq.leave_type,
+            year
           }
         }
       });
       
       if (!balance) {
-        throw new BadRequestError(`Leave balance for ${leaveReq.leave_type} not found`);
+        throw new BadRequestError(`Leave balance for ${leaveReq.leave_type} in year ${year} not found`);
       }
       
       if (balance.remaining < days) {
@@ -98,8 +100,8 @@ export class LeaveService {
       });
       
       const dates = [];
-      let current = new Date(leaveReq.from_date);
-      while (current <= leaveReq.to_date) {
+      let current = new Date(leaveReq.start_date);
+      while (current <= leaveReq.end_date) {
         dates.push(new Date(current));
         current.setDate(current.getDate() + 1);
       }
@@ -126,9 +128,10 @@ export class LeaveService {
   }
 
   public static async createOrUpdateLeaveBalance(employeeId: string, leaveType: string, total: number) {
+    const year = new Date().getFullYear();
     const existing = await prisma.leaveBalance.findUnique({
       where: {
-        employee_id_leave_type: { employee_id: employeeId, leave_type: leaveType }
+        employee_id_leave_type_year: { employee_id: employeeId, leave_type: leaveType, year }
       }
     });
 
@@ -146,6 +149,7 @@ export class LeaveService {
       data: {
         employee_id: employeeId,
         leave_type: leaveType,
+        year,
         total,
         remaining: total,
         used: 0

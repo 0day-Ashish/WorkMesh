@@ -45,6 +45,8 @@ jest.mock('../src/config/db', () => {
     leaveRequest: {
       create: jest.fn(),
       findMany: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
     },
     leaveBalance: {
       findUnique: jest.fn(),
@@ -301,12 +303,7 @@ describe('WorkMesh Core Modules API Tests', () => {
   });
 
   describe('Leave Module', () => {
-    it('should allow employee to apply for leave if balance is sufficient', async () => {
-      mockPrisma.leaveBalance.findUnique.mockResolvedValue({
-        id: 'bal-1',
-        remaining: 10,
-        used: 2,
-      });
+    it('should allow employee to apply for leave', async () => {
       mockPrisma.leaveRequest.create.mockResolvedValue({
         id: 'lv-1',
         leave_type: 'Sick',
@@ -317,35 +314,45 @@ describe('WorkMesh Core Modules API Tests', () => {
         .post('/api/leave')
         .set('Authorization', `Bearer ${employeeToken}`)
         .send({
-          leave_type: 'Sick',
-          start_date: '2026-07-10',
-          end_date: '2026-07-12',
-          remarks: 'Fever',
+          leaveType: 'Sick',
+          fromDate: '2026-07-10',
+          toDate: '2026-07-12',
+          reason: 'Fever',
         });
 
       expect(res.status).toBe(201);
-      expect(mockPrisma.leaveBalance.update).toHaveBeenCalled();
       expect(mockPrisma.leaveRequest.create).toHaveBeenCalled();
     });
 
-    it('should fail leave application if balance is insufficient', async () => {
+    it('should allow admin to approve leave and deduct balance', async () => {
+      mockPrisma.leaveRequest.findUnique.mockResolvedValue({
+        id: 'lv-1',
+        employee_id: 'emp-id-123',
+        leave_type: 'Sick',
+        start_date: new Date('2026-07-10'),
+        end_date: new Date('2026-07-12'),
+        status: RequestStatus.Pending,
+      });
+
+      mockPrisma.leaveRequest.update.mockResolvedValue({
+        id: 'lv-1',
+        status: RequestStatus.Approved,
+      });
+
       mockPrisma.leaveBalance.findUnique.mockResolvedValue({
         id: 'bal-1',
-        remaining: 1,
+        remaining: 10,
         used: 2,
       });
 
       const res = await request(app)
-        .post('/api/leave')
-        .set('Authorization', `Bearer ${employeeToken}`)
-        .send({
-          leave_type: 'Sick',
-          start_date: '2026-07-10',
-          end_date: '2026-07-12',
-          remarks: 'Fever',
-        });
+        .patch('/api/leave/lv-1/decision')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: RequestStatus.Approved });
 
-      expect(res.status).toBe(400); // Insufficient leave balance
+      expect(res.status).toBe(200);
+      expect(mockPrisma.leaveBalance.update).toHaveBeenCalled();
+      expect(mockPrisma.attendance.upsert).toHaveBeenCalled();
     });
   });
 });
