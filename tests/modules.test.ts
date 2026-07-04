@@ -239,7 +239,7 @@ describe('WorkMesh Core Modules API Tests', () => {
 
     it('should allow employee to file regularization request', async () => {
       mockPrisma.attendanceRegularization.create.mockResolvedValue({
-        id: 'reg-1',
+        id: '11111111-1111-1111-1111-111111111111',
         reason: 'Missed card swipe',
       });
 
@@ -257,7 +257,7 @@ describe('WorkMesh Core Modules API Tests', () => {
 
     it('should allow admin to approve regularization request', async () => {
       mockPrisma.attendanceRegularization.findUnique.mockResolvedValue({
-        id: 'reg-1',
+        id: '11111111-1111-1111-1111-111111111111',
         status: RequestStatus.Pending,
         employee_id: 'emp-id-123',
         date: new Date('2026-07-04'),
@@ -265,12 +265,12 @@ describe('WorkMesh Core Modules API Tests', () => {
         requested_check_out: new Date('2026-07-04T17:00:00Z'),
       });
       mockPrisma.attendanceRegularization.update.mockResolvedValue({
-        id: 'reg-1',
+        id: '11111111-1111-1111-1111-111111111111',
         status: RequestStatus.Approved,
       });
 
       const res = await request(app)
-        .patch('/api/attendance/regularizations/reg-1/decision')
+        .patch('/api/attendance/regularizations/11111111-1111-1111-1111-111111111111/decision')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ status: RequestStatus.Approved });
 
@@ -311,7 +311,7 @@ describe('WorkMesh Core Modules API Tests', () => {
   describe('Leave Module', () => {
     it('should allow employee to apply for leave', async () => {
       mockPrisma.leaveRequest.create.mockResolvedValue({
-        id: 'lv-1',
+        id: '22222222-2222-2222-2222-222222222222',
         leave_type: 'Sick',
         status: RequestStatus.Pending,
       });
@@ -332,7 +332,7 @@ describe('WorkMesh Core Modules API Tests', () => {
 
     it('should allow admin to approve leave and deduct balance', async () => {
       mockPrisma.leaveRequest.findUnique.mockResolvedValue({
-        id: 'lv-1',
+        id: '22222222-2222-2222-2222-222222222222',
         employee_id: 'emp-id-123',
         leave_type: 'Sick',
         start_date: new Date('2026-07-10'),
@@ -341,7 +341,7 @@ describe('WorkMesh Core Modules API Tests', () => {
       });
 
       mockPrisma.leaveRequest.update.mockResolvedValue({
-        id: 'lv-1',
+        id: '22222222-2222-2222-2222-222222222222',
         status: RequestStatus.Approved,
       });
 
@@ -352,7 +352,7 @@ describe('WorkMesh Core Modules API Tests', () => {
       });
 
       const res = await request(app)
-        .patch('/api/leave/lv-1/decision')
+        .patch('/api/leave/22222222-2222-2222-2222-222222222222/decision')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ status: RequestStatus.Approved });
 

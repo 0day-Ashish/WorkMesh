@@ -3,6 +3,8 @@ import { DocumentsController } from './documents.controller';
 import { authMiddleware } from '../../middlewares/authMiddleware';
 import { requireRole } from '../../middlewares/roleMiddleware';
 import { upload } from '../../middlewares/upload.middleware';
+import { validateParams } from '../../middlewares/validateMiddleware';
+import { employeeIdParamSchema } from '../../utils/paramSchemas';
 
 const createDocumentsRouter = (): Router => {
   const router = Router();
@@ -15,8 +17,8 @@ const createDocumentsRouter = (): Router => {
   router.get('/files/:filename', authMiddleware, DocumentsController.serveDocumentFile);
 
   // Administrative endpoints for any employee's documents (admin role only)
-  router.get('/:employeeId', authMiddleware, requireRole(['admin']), DocumentsController.getEmployeeDocuments);
-  router.post('/:employeeId', authMiddleware, requireRole(['admin']), upload.single('file'), DocumentsController.uploadEmployeeDocument);
+  router.get('/:employeeId', authMiddleware, requireRole(['admin']), validateParams(employeeIdParamSchema), DocumentsController.getEmployeeDocuments);
+  router.post('/:employeeId', authMiddleware, requireRole(['admin']), validateParams(employeeIdParamSchema), upload.single('file'), DocumentsController.uploadEmployeeDocument);
 
   return router;
 };

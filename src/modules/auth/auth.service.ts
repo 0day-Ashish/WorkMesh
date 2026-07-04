@@ -75,12 +75,16 @@ export class AuthService {
 
   // Get the secret for access tokens
   private static getAccessSecret(): string {
-    return process.env.JWT_ACCESS_SECRET || 'super_secret_access_token_key_1234567890';
+    const secret = process.env.JWT_ACCESS_SECRET;
+    if (!secret) throw new Error('FATAL: JWT_ACCESS_SECRET environment variable is not set');
+    return secret;
   }
 
   // Get the secret for refresh tokens
   private static getRefreshSecret(): string {
-    return process.env.JWT_REFRESH_SECRET || 'super_secret_refresh_token_key_1234567890';
+    const secret = process.env.JWT_REFRESH_SECRET;
+    if (!secret) throw new Error('FATAL: JWT_REFRESH_SECRET environment variable is not set');
+    return secret;
   }
 
   // Generate Access Token
@@ -296,11 +300,13 @@ export class AuthService {
       `,
     };
 
-    console.log(`[Verification Email] Sent to: ${email}`);
-    console.log(`[Verification Link]: ${verifyUrl}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[Verification Email] Sent to: ${email}`);
+      console.log(`[Verification Link]: ${verifyUrl}`);
+    }
 
     const info = await transporter.sendMail(mailOptions);
-    if (info && info.messageId && info.messageId.includes('ethereal')) {
+    if (process.env.NODE_ENV !== 'production' && info && info.messageId && info.messageId.includes('ethereal')) {
       console.log(`Preview email URL: ${nodemailer.getTestMessageUrl(info)}`);
     }
   }
@@ -324,11 +330,13 @@ export class AuthService {
       `,
     };
 
-    console.log(`[Password Reset Email] Sent to: ${email}`);
-    console.log(`[Password Reset Link]: ${resetUrl}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[Password Reset Email] Sent to: ${email}`);
+      console.log(`[Password Reset Link]: ${resetUrl}`);
+    }
 
     const info = await transporter.sendMail(mailOptions);
-    if (info && info.messageId && info.messageId.includes('ethereal')) {
+    if (process.env.NODE_ENV !== 'production' && info && info.messageId && info.messageId.includes('ethereal')) {
       console.log(`Preview email URL: ${nodemailer.getTestMessageUrl(info)}`);
     }
   }

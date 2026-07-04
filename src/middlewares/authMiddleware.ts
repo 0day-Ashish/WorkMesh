@@ -24,7 +24,10 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
   const token = authHeader.split(' ')[1];
   let decoded;
   try {
-    const accessSecret = process.env.JWT_ACCESS_SECRET || 'super_secret_access_token_key_1234567890';
+    const accessSecret = process.env.JWT_ACCESS_SECRET;
+    if (!accessSecret) {
+      return next(new UnauthorizedError('Server misconfiguration: JWT secret not set'));
+    }
     decoded = jwt.verify(token, accessSecret) as {
       id: string;
       email: string;

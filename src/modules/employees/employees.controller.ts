@@ -56,7 +56,7 @@ export class EmployeesController {
 
   public static async createEmployee(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { employee_code, department_id } = req.body;
+      const { employee_code, full_name, designation, phone, address, joining_date, status, department_id } = req.body;
 
       const existingCode = await prisma.employee.findUnique({
         where: { employee_code },
@@ -76,7 +76,7 @@ export class EmployeesController {
       }
 
       const newEmployee = await prisma.employee.create({
-        data: req.body,
+        data: { employee_code, full_name, designation, phone, address, joining_date, status, department_id },
       });
 
       res.status(201).json(newEmployee);
@@ -115,7 +115,7 @@ export class EmployeesController {
   public static async updateEmployee(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
-      const { employee_code, department_id } = req.body;
+      const { employee_code, full_name, designation, phone, address, joining_date, status, department_id } = req.body;
 
       const employee = await prisma.employee.findUnique({
         where: { id },
@@ -145,11 +145,11 @@ export class EmployeesController {
 
       const updatedEmployee = await prisma.employee.update({
         where: { id },
-        data: req.body,
+        data: { employee_code, full_name, designation, phone, address, joining_date, status, department_id },
       });
 
       // If terminated, immediately revoke associated user's active sessions/refresh tokens
-      if (req.body.status === 'terminated' && updatedEmployee.user_id) {
+      if (status === 'terminated' && updatedEmployee.user_id) {
         await prisma.refreshToken.updateMany({
           where: { user_id: updatedEmployee.user_id, revoked_at: null },
           data: { revoked_at: new Date() },

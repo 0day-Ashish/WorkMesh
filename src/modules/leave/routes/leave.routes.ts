@@ -2,8 +2,9 @@ import { Router } from 'express';
 import { LeaveController } from '../controllers/leave.controller';
 import { authMiddleware } from '../../../middlewares/authMiddleware';
 import { requireRole } from '../../../middlewares/roleMiddleware';
-import { validateBody } from '../../../middlewares/validateMiddleware';
+import { validateBody, validateParams } from '../../../middlewares/validateMiddleware';
 import { createLeaveSchema, leaveDecisionSchema, createLeaveBalanceSchema } from '../validators/leave.schema';
+import { idParamSchema } from '../../../utils/paramSchemas';
 
 const router = Router();
 
@@ -17,7 +18,7 @@ router.get('/balances/me', requireRole(['employee', 'admin']), LeaveController.g
 
 // Admin routes
 router.get('/', requireRole(['admin']), LeaveController.getAllLeaveRequests);
-router.patch('/:id/decision', requireRole(['admin']), validateBody(leaveDecisionSchema), LeaveController.patchLeaveDecision);
+router.patch('/:id/decision', requireRole(['admin']), validateParams(idParamSchema), validateBody(leaveDecisionSchema), LeaveController.patchLeaveDecision);
 router.post('/balances', requireRole(['admin']), validateBody(createLeaveBalanceSchema), LeaveController.addLeaveBalance);
 
 export default router;

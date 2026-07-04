@@ -18,6 +18,9 @@ import { errorHandler } from './middlewares/errorHandler';
 
 const app = express();
 
+// Trust first proxy for proper rate limiting behind reverse proxies/NAT
+app.set('trust proxy', 1);
+
 // Disable X-Powered-By header (info leakage)
 app.disable('x-powered-by');
 
@@ -43,23 +46,23 @@ app.use(express.json({ limit: '10kb' }));
 
 const isTest = process.env.NODE_ENV === 'test';
 
-// Rate limiter: general API — 100 requests per 15 minutes per IP
+// Rate limiter: general API — 500 requests per 15 minutes per IP
 const generalLimiter = isTest
   ? (req: any, res: any, next: any) => next()
   : rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: 100,
+      max: 500,
       standardHeaders: true,
       legacyHeaders: false,
       message: { message: 'Too many requests from this IP, please try again later.' },
     });
 
-// Rate limiter: strict for auth-sensitive endpoints — 10 requests per 15 minutes per IP
+// Rate limiter: strict for auth-sensitive endpoints — 30 requests per 15 minutes per IP
 const authLimiter = isTest
   ? (req: any, res: any, next: any) => next()
   : rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: 10,
+      max: 30,
       standardHeaders: true,
       legacyHeaders: false,
       message: { message: 'Too many authentication attempts. Please try again later.' },

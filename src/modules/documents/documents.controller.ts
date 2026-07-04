@@ -150,7 +150,15 @@ export class DocumentsController {
         throw new ForbiddenError('You do not have permission to access this document');
       }
 
-      const filePath = path.join(UPLOAD_DIR, filename);
+      // Sanitize filename to prevent path traversal (e.g. ../../.env)
+      const safeName = path.basename(filename);
+      const filePath = path.resolve(UPLOAD_DIR, safeName);
+
+      // Verify the resolved path is still within the upload directory
+      if (!filePath.startsWith(path.resolve(UPLOAD_DIR))) {
+        throw new ForbiddenError('Invalid file path');
+      }
+
       if (!fs.existsSync(filePath)) {
         throw new NotFoundError('Document file not found on disk');
       }

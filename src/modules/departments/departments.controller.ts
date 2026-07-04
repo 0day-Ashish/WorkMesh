@@ -36,7 +36,7 @@ export class DepartmentsController {
       }
 
       const newDept = await prisma.department.create({
-        data: req.body,
+        data: { name, manager_id: manager_id || null },
       });
 
       res.status(201).json(newDept);
@@ -78,7 +78,7 @@ export class DepartmentsController {
 
       const updatedDept = await prisma.department.update({
         where: { id },
-        data: req.body,
+        data: { name, manager_id: manager_id || null },
       });
 
       res.status(200).json(updatedDept);
