@@ -36,6 +36,9 @@ coverage/
 .DS_Store
 Thumbs.db
 
+# Local docs (not for remote)
+IMPLEMENTED.md
+
 # Misc
 .cache/
 .temp/
