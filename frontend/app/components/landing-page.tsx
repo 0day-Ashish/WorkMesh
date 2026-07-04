@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { apiClient } from "../apiClient";
 import {
   ArrowRight,
   Clock,
@@ -88,15 +90,32 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactMessage, setContactMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState(false);
 
-  const handleContactSubmit = (e: React.FormEvent) => {
+  const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormSuccess(true);
-    setContactName("");
-    setContactEmail("");
-    setContactMessage("");
-    setTimeout(() => setFormSuccess(false), 5000);
+    if (!contactName.trim() || !contactEmail.trim() || !contactMessage.trim()) return;
+
+    setIsSubmitting(true);
+    setFormError("");
+    try {
+      await apiClient.contacts.submit({
+        fullName: contactName,
+        email: contactEmail,
+        message: contactMessage,
+      });
+      setFormSuccess(true);
+      setContactName("");
+      setContactEmail("");
+      setContactMessage("");
+      setTimeout(() => setFormSuccess(false), 5000);
+    } catch (err: any) {
+      setFormError(err.message || "Failed to submit message. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -133,7 +152,7 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
 
           <nav className="hidden md:flex items-center gap-8 text-xs font-bold uppercase tracking-wider text-slate-500">
             <a href="#features" className="hover:text-slate-900 transition-colors">Features</a>
-            <a href="#compliance" className="hover:text-slate-900 transition-colors">Compliance</a>
+            <Link href="/compliance" className="hover:text-slate-900 transition-colors">Compliance</Link>
             <a href="#showcase" className="hover:text-slate-900 transition-colors">Preview</a>
           </nav>
 
@@ -151,7 +170,7 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
       <section className="px-6 sm:px-12 py-16 sm:py-24 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
         <div className="lg:col-span-6 space-y-6 text-left">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.05] font-sans">
-            The Operating System for <span className="text-blue-600">Modern Teams</span>.
+            The Operating System for <span className="text-blue-600">Modern Teams</span>
           </h1>
 
           <p className="text-sm sm:text-base text-slate-500 leading-relaxed max-w-xl">
@@ -186,7 +205,6 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
               <div className="w-3 h-3 rounded-full bg-yellow-400" />
               <div className="w-3 h-3 rounded-full bg-green-400" />
             </div>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Live Demo Console</span>
           </div>
 
           <div className="space-y-4">
@@ -296,6 +314,70 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                 </div>
                 <h3 className="font-extrabold text-sm text-slate-850 uppercase tracking-wide">{feat.title}</h3>
                 <p className="text-xs text-slate-500 leading-relaxed">{feat.desc}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Workflow Section */}
+      <section className="max-w-7xl mx-auto px-6 sm:px-12 w-full mt-8 mb-16 no-print space-y-12">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">Operational Workflow</h2>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">From checking in on your morning shift to downloading your end-of-month payslip.</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 relative">
+          {[
+            {
+              step: "01",
+              title: "Punch Console",
+              desc: "Employees check in to start their shifts via the dashboard punch card.",
+              icon: Clock,
+              color: "text-blue-600 bg-blue-50 border-blue-100"
+            },
+            {
+              step: "02",
+              title: "Roster Logging",
+              desc: "WorkMesh logs coordinates, timestamps, and calculates shift hours dynamically.",
+              icon: Activity,
+              color: "text-amber-600 bg-amber-50 border-amber-100"
+            },
+            {
+              step: "03",
+              title: "Review & Adjust",
+              desc: "Missed punches can be adjusted via regularization workflows with manager approvals.",
+              icon: Shield,
+              color: "text-emerald-600 bg-emerald-50 border-emerald-100"
+            },
+            {
+              step: "04",
+              title: "Payslip Payout",
+              desc: "Finance approves hours, compiling digital monthly slips ready for secure PDF download.",
+              icon: Banknote,
+              color: "text-purple-600 bg-purple-50 border-purple-100"
+            }
+          ].map((item, idx) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.step} className="bg-white border border-black rounded-2xl p-6 shadow-md relative hover:border-slate-800 transition-colors space-y-4">
+                {/* Step number watermark */}
+                <div className="absolute top-4 right-4 text-3xl font-black text-slate-100 font-mono tracking-tighter select-none">
+                  {item.step}
+                </div>
+
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${item.color}`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+
+                <div className="space-y-1.5 pt-2 text-left">
+                  <h3 className="font-extrabold text-sm text-slate-850 uppercase tracking-wide">
+                    {idx + 1}. {item.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    {item.desc}
+                  </p>
+                </div>
               </div>
             );
           })}
@@ -461,11 +543,16 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                   />
                 </div>
 
+                {formError && (
+                  <p className="text-[10px] text-red-600 font-bold uppercase tracking-wider">{formError}</p>
+                )}
+
                 <button
                   type="submit"
-                  className="w-full flex justify-center py-2.5 px-4 bg-slate-900 border border-black hover:bg-slate-800 text-white rounded-lg text-xs font-extrabold uppercase tracking-wider transition-colors cursor-pointer"
+                  disabled={isSubmitting}
+                  className="w-full flex justify-center py-2.5 px-4 bg-slate-900 border border-black hover:bg-slate-800 text-white rounded-lg text-xs font-extrabold uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Send Message
+                  {isSubmitting ? "Sending..." : "Send Message"}
                 </button>
               </form>
             )}
@@ -488,9 +575,9 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
 
             <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs font-black uppercase tracking-wider text-slate-500">
               <a href="#features" className="hover:text-slate-900 transition-colors">Features</a>
-              <a href="#compliance" className="hover:text-slate-900 transition-colors">Compliance</a>
-              <a href="#" className="hover:text-slate-900 transition-colors">Privacy</a>
-              <a href="#" className="hover:text-slate-900 transition-colors">Terms</a>
+              <Link href="/compliance" className="hover:text-slate-900 transition-colors">Compliance</Link>
+              <Link href="/privacy" className="hover:text-slate-900 transition-colors">Privacy</Link>
+              <Link href="/terms" className="hover:text-slate-900 transition-colors">Terms</Link>
             </div>
           </div>
 

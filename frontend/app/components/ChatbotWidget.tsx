@@ -8,6 +8,61 @@ interface Message {
   content: string;
 }
 
+const formatMessageContent = (content: string) => {
+  if (!content) return null;
+  const lines = content.split("\n");
+  
+  return (
+    <div className="space-y-1">
+      {lines.map((line, lineIdx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={lineIdx} className="h-2" />;
+
+        // Header Check
+        if (trimmed.startsWith("#")) {
+          const cleanText = trimmed.replace(/^#+\s*/, "");
+          return (
+            <h4 key={lineIdx} className="font-black text-slate-950 text-xs mt-3 mb-1 uppercase tracking-wider">
+              {cleanText}
+            </h4>
+          );
+        }
+
+        // Bullet Check
+        const isBullet = trimmed.startsWith("* ") || trimmed.startsWith("- ") || trimmed.startsWith("• ");
+        let cleanLine = trimmed;
+        if (isBullet) {
+          cleanLine = trimmed.replace(/^[*•-]\s*/, "");
+        }
+
+        // Parse Bold (**text**)
+        const parts = cleanLine.split(/\*\*([^*]+)\*\*/g);
+        const nodeElements = parts.map((part, partIdx) => {
+          if (partIdx % 2 === 1) {
+            return <strong key={partIdx} className="font-extrabold text-slate-950">{part}</strong>;
+          }
+          return part;
+        });
+
+        if (isBullet) {
+          return (
+            <div key={lineIdx} className="flex gap-2 items-start pl-2 my-1 text-[11px]">
+              <span className="text-blue-500 font-bold shrink-0">•</span>
+              <span className="text-slate-700 font-medium">{nodeElements}</span>
+            </div>
+          );
+        }
+
+        return (
+          <p key={lineIdx} className="text-[11px] my-1 leading-relaxed text-slate-700 font-medium">
+            {nodeElements}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
 export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -111,7 +166,7 @@ export default function ChatbotWidget() {
                       : "bg-white text-slate-800 border-slate-200/80 rounded-tl-none font-semibold"
                     }`}
                 >
-                  {msg.content}
+                  {msg.role === "user" ? msg.content : formatMessageContent(msg.content)}
                 </div>
               </div>
             ))}

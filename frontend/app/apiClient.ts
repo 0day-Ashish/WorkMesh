@@ -329,4 +329,12 @@ export const apiClient = {
       });
     },
   },
+  contacts: {
+    submit: async (data: { fullName: string; email: string; message: string }) => {
+      return request("/contacts", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+  },
 };

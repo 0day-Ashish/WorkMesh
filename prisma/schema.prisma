@@ -200,3 +200,13 @@ model Payroll {
   @@unique([employee_id, month, year])
   @@map("payroll")
 }
+
+model ContactSubmission {
+  id         String   @id @default(uuid())
+  full_name  String
+  email      String
+  message    String
+  created_at DateTime @default(now())
+
+  @@map("contact_submissions")
+}

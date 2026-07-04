@@ -14,6 +14,7 @@ import createDepartmentsRouter from './modules/departments/departments.routes';
 import createDocumentsRouter from './modules/documents/documents.routes';
 import createAttendanceRouter from './modules/attendance/attendance.routes';
 import createHolidaysRouter from './modules/holidays/holidays.routes';
+import createContactsRouter from './modules/contacts/contacts.routes';
 import { errorHandler } from './middlewares/errorHandler';
 
 const app = express();
@@ -81,6 +82,7 @@ app.use('/api/departments', createDepartmentsRouter());
 app.use('/api/documents', createDocumentsRouter());
 app.use('/api/attendance', createAttendanceRouter());
 app.use('/api/holidays', createHolidaysRouter());
+app.use('/api/contacts', createContactsRouter());
 
 // Health check
 app.get('/health', (req, res) => {
