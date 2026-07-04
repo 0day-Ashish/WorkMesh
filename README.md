@@ -1,5 +1,7 @@
 # WorkMesh - Unified HR & Operations Portal
 
+![WorkMesh Console Preview](frontend/public/assets/image.png)
+
 WorkMesh is a premium, secure, and unified Human Resource Management & Operations platform designed for modern teams. It integrates shift punch consoles, daily attendance logs, regularization workflows, leave balance trackers, digital payroll slips, and document compliance vaults into a single cohesive system.
 
 ---
@@ -74,15 +76,35 @@ Follow these steps to set up and run both services locally.
 
 ### Prerequisites
 * **Node.js**: v18.0.0 or higher
-* **PostgreSQL Database**: Running locally or hosted on Render/RDS
+* **PostgreSQL Database**: Running locally or hosted on AWS RDS / Render
 
 ### 1. Database Setup
-Copy `.env.example` to `.env` in the root folder, customize the connection string, and run migrations:
-```bash
-# Configure DATABASE_URL in .env
-npx prisma migrate dev --name init
-npx prisma db seed
-```
+
+WorkMesh supports local PostgreSQL instances as well as deployed, managed instances like **AWS RDS**.
+
+#### Option A: AWS RDS PostgreSQL Setup (Recommended for deployments)
+1. Provision a PostgreSQL instance on AWS RDS.
+2. Configure the database security group to accept inbound traffic from your application server IPs (or `0.0.0.0/0` for initial configuration testing).
+3. Update the `DATABASE_URL` environment variable inside your root `.env` file to use the RDS endpoint:
+   ```env
+   DATABASE_URL="postgresql://username:password@your-rds-endpoint.amazonaws.com:5432/workmesh?schema=public"
+   ```
+4. Synchronize the database schema directly to your AWS RDS instance:
+   ```bash
+   npx prisma db push --accept-data-loss
+   ```
+5. Seed initial data (creates Admin & Employee test profiles, and default leave entitlements):
+   ```bash
+   npx prisma db seed
+   ```
+
+#### Option B: Local PostgreSQL Setup
+1. Ensure a PostgreSQL server is running locally on your machine.
+2. Copy `.env.example` to `.env` in the root folder, configure the `DATABASE_URL` with your local database credentials, and run migrations:
+   ```bash
+   npx prisma migrate dev --name init
+   npx prisma db seed
+   ```
 
 ### 2. Run Backend Server
 From the project root directory:
