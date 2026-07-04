@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { Bell, Search, Globe, ChevronRight } from "lucide-react";
-import { Employee, mockStore } from "./mockStore";
+import { Employee } from "./mockStore";
+import { apiClient, getAccessToken, clearTokens, parseJwt } from "./apiClient";
 import Sidebar, { ViewType } from "./components/sidebar";
 import DemoToolbar from "./components/demo-toolbar";
 import AuthViews from "./components/auth-views";
@@ -15,30 +16,51 @@ import PayrollView from "./components/payroll-view";
 import EmployeesView from "./components/employees-view";
 
 export default function Home() {
-  const [user, setUser] = useState<Employee | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [activeView, setActiveView] = useState<ViewType>("dashboard");
   const [isClient, setIsClient] = useState(false);
+
+  const refreshProfile = async () => {
+    const token = getAccessToken();
+    if (!token) {
+      setUser(null);
+      return;
+    }
+    try {
+      const profile = await apiClient.employees.getMe();
+      const decoded = parseJwt(token);
+      setUser({
+        ...profile,
+        fullName: profile.full_name || "Employee",
+        joinedDate: profile.joining_date,
+        role: decoded?.role || "employee"
+      });
+    } catch (err) {
+      clearTokens();
+      setUser(null);
+    }
+  };
 
   // Hydrate client state
   useEffect(() => {
     setIsClient(true);
-    setUser(mockStore.getAuthUser());
+    refreshProfile();
   }, []);
 
-  const handleLogout = () => {
-    mockStore.logout();
+  const handleLogout = async () => {
+    await apiClient.auth.logout();
     setUser(null);
     setActiveView("dashboard");
   };
 
-  const handleUserSwap = (swappedUser: Employee) => {
-    setUser(swappedUser);
+  const handleUserSwap = () => {
+    refreshProfile();
     setActiveView("dashboard");
   };
 
   if (!isClient) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
@@ -48,7 +70,7 @@ export default function Home() {
   if (!user) {
     return (
       <>
-        <AuthViews onAuthSuccess={(authenticatedUser) => setUser(authenticatedUser)} />
+        <AuthViews onAuthSuccess={refreshProfile} />
         <DemoToolbar currentUser={user} onUserChanged={handleUserSwap} />
       </>
     );
@@ -88,7 +110,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex bg-slate-50 min-h-screen">
+    <div className="flex bg-background min-h-screen">
       {/* Sidebar - Left Navigation */}
       <Sidebar 
         user={user} 
@@ -100,7 +122,7 @@ export default function Home() {
       {/* Main Content Pane */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Header - Navigation Bar */}
-        <header className="h-16 bg-white border-b border-slate-200/80 px-8 flex items-center justify-between sticky top-0 z-40 no-print">
+        <header className="h-16 bg-background border-b border-slate-200/80 px-8 flex items-center justify-between sticky top-0 z-40 no-print">
           {/* Breadcrumbs */}
           <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
             <span className="text-slate-400">WorkMesh</span>

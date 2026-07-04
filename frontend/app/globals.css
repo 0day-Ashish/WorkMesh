@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
+  --background: #F2F0EF;
   --foreground: #0f172a;
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
-  --border: #e2e8f0;
+  --border: #000000;
   --card: #ffffff;
 }
 
@@ -28,6 +28,12 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+/* Ensure all borders in the layout and components are solid black */
+.border, .border-t, .border-r, .border-b, .border-l, .border-x, .border-y {
+  border-color: #000000 !important;
+}
+
 
 /* Custom premium scrollbar styling */
 ::-webkit-scrollbar {

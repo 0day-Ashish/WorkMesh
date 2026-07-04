@@ -2,134 +2,191 @@
 
 import React, { useState, useEffect } from "react";
 import { User, FileText, Upload, Save, Eye, CheckCircle2, ChevronRight, ShieldAlert } from "lucide-react";
-import { Employee, mockStore, Department } from "../mockStore";
+import { apiClient } from "../apiClient";
 
 interface ProfileViewProps {
-  user: Employee;
-}
-
-interface MockDoc {
-  id: string;
-  name: string;
-  type: string;
-  size: string;
-  uploadedAt: string;
+  user: any;
 }
 
 export default function ProfileView({ user }: ProfileViewProps) {
   const isAdmin = user.role === "admin";
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [selectedEmpId, setSelectedEmpId] = useState(user.id);
   const [activeTab, setActiveTab] = useState<"details" | "documents">("details");
 
   // Form Fields
-  const [targetEmp, setTargetEmp] = useState<Employee | null>(null);
   const [fullName, setFullName] = useState("");
   const [designation, setDesignation] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [departmentId, setDepartmentId] = useState("");
-  const [status, setStatus] = useState<any>("active");
-  const [role, setRole] = useState<any>("employee");
+  const [status, setStatus] = useState("active");
+  const [role, setRole] = useState("employee");
   const [basicSalary, setBasicSalary] = useState(0);
   const [allowance, setAllowance] = useState(0);
   const [deductions, setDeductions] = useState(0);
 
-  // Mock Documents State
-  const [documents, setDocuments] = useState<MockDoc[]>([
-    { id: "doc-1", name: "ID_Proof_Verification.pdf", type: "ID Proof", size: "1.2 MB", uploadedAt: "2026-01-16" },
-    { id: "doc-2", name: "Offer_Letter_WorkMesh.pdf", type: "Offer Letter", size: "2.4 MB", uploadedAt: "2026-01-15" }
-  ]);
+  // Documents
+  const [documents, setDocuments] = useState<any[]>([]);
   const [newDocName, setNewDocName] = useState("");
   const [newDocType, setNewDocType] = useState("Payslip");
 
   const [message, setMessage] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Load directories
   useEffect(() => {
-    setEmployees(mockStore.getEmployees());
-    setDepartments(mockStore.getDepartments());
-  }, []);
+    const loadDirectories = async () => {
+      try {
+        if (isAdmin) {
+          const emps = await apiClient.employees.list();
+          setEmployees(emps);
+        }
+        const depts = await apiClient.departments.list();
+        setDepartments(depts);
+      } catch (err) {
+        console.error("Failed to load directories", err);
+      }
+    };
+    loadDirectories();
+  }, [isAdmin]);
 
-  useEffect(() => {
-    const list = mockStore.getEmployees();
-    const emp = list.find(e => e.id === selectedEmpId) || user;
-    setTargetEmp(emp);
-    
-    // Set form fields
-    setFullName(emp.fullName);
-    setDesignation(emp.designation);
-    setPhone(emp.phone);
-    setAddress(emp.address);
-    setDepartmentId(emp.departmentId);
-    setStatus(emp.status);
-    setRole(emp.role);
-    setBasicSalary(emp.basicSalary);
-    setAllowance(emp.allowance);
-    setDeductions(emp.deductions);
-    setMessage("");
-  }, [selectedEmpId, user]);
+  // Load selected profile data
+  const loadProfileData = async () => {
+    setIsLoading(true);
+    setErrorMsg("");
+    try {
+      // 1. Fetch profile
+      let emp: any = null;
+      if (selectedEmpId === user.id) {
+        emp = await apiClient.employees.getMe();
+      } else if (isAdmin) {
+        emp = await apiClient.employees.get(selectedEmpId);
+      }
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!targetEmp) return;
+      if (emp) {
+        setFullName(emp.full_name || "");
+        setDesignation(emp.designation || "");
+        setPhone(emp.phone || "");
+        setAddress(emp.address || "");
+        setDepartmentId(emp.department_id || "");
+        setStatus(emp.status || "active");
+        setRole(emp.user?.role || "employee");
+      }
 
-    // Build updated object
-    let updated: Employee;
-    if (isAdmin) {
-      // Admin can edit everything
-      updated = {
-        ...targetEmp,
-        fullName,
-        designation,
-        phone,
-        address,
-        departmentId,
-        status,
-        role,
-        basicSalary: Number(basicSalary),
-        allowance: Number(allowance),
-        deductions: Number(deductions)
-      };
-    } else {
-      // Employee can ONLY edit phone and address
-      updated = {
-        ...targetEmp,
-        phone,
-        address
-      };
+      // 2. Fetch documents
+      let docs: any[] = [];
+      if (selectedEmpId === user.id) {
+        docs = await apiClient.documents.getMe();
+      } else if (isAdmin) {
+        docs = await apiClient.documents.getEmployeeDocuments(selectedEmpId);
+      }
+      setDocuments(docs);
+
+      // 3. Fetch payroll
+      let salaryList: any[] = [];
+      if (selectedEmpId === user.id) {
+        salaryList = await apiClient.payroll.getMe();
+      } else if (isAdmin) {
+        salaryList = await apiClient.payroll.getEmployeePayroll(selectedEmpId);
+      }
+      if (salaryList && salaryList.length > 0) {
+        setBasicSalary(Number(salaryList[0].basic_salary) || 0);
+        setDeductions(Number(salaryList[0].deductions) || 0);
+        setAllowance(0);
+      } else {
+        setBasicSalary(0);
+        setDeductions(0);
+        setAllowance(0);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to load profile details");
+    } finally {
+      setIsLoading(false);
     }
-
-    mockStore.saveEmployee(updated);
-    // Refresh lists
-    setEmployees(mockStore.getEmployees());
-    setMessage("Profile updated successfully!");
-    setTimeout(() => setMessage(""), 3000);
   };
 
-  const handleUploadDoc = (e: React.FormEvent) => {
+  useEffect(() => {
+    loadProfileData();
+  }, [selectedEmpId, user.id]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg("");
+    setMessage("");
+    try {
+      if (selectedEmpId === user.id) {
+        // Employee saves own contact details
+        await apiClient.employees.patchMe({ phone, address });
+      } else if (isAdmin) {
+        // Admin saves all details
+        await apiClient.employees.update(selectedEmpId, {
+          full_name: fullName,
+          designation,
+          phone,
+          address,
+          department_id: departmentId || null,
+          status,
+        });
+
+        // Upsert salary structure for current month/year
+        const currentMonth = new Date().getMonth() + 1;
+        const currentYear = new Date().getFullYear();
+        await apiClient.payroll.upsertPayroll(selectedEmpId, {
+          month: currentMonth,
+          year: currentYear,
+          basicSalary,
+          deductions,
+        });
+      }
+      setMessage("Profile details saved successfully!");
+      setTimeout(() => setMessage(""), 3000);
+      loadProfileData();
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to save profile changes");
+    }
+  };
+
+  const handleUploadDoc = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDocName) return;
+    setErrorMsg("");
+    setMessage("");
 
-    const newDoc: MockDoc = {
-      id: `doc-${Date.now()}`,
-      name: newDocName.endsWith(".pdf") ? newDocName : `${newDocName}.pdf`,
-      type: newDocType,
-      size: "820 KB",
-      uploadedAt: new Date().toISOString().split("T")[0]
-    };
+    const nameWithExt = newDocName.endsWith(".pdf") ? newDocName : `${newDocName}.pdf`;
+    const dummyUrl = `https://storage.workmesh.com/docs/${Date.now()}-${nameWithExt}`;
 
-    setDocuments([newDoc, ...documents]);
-    setNewDocName("");
-    setMessage("Document uploaded successfully (mocked)!");
-    setTimeout(() => setMessage(""), 3000);
+    try {
+      if (selectedEmpId === user.id) {
+        await apiClient.documents.uploadMe({ doc_type: newDocType, file_url: dummyUrl });
+      } else if (isAdmin) {
+        await apiClient.documents.uploadEmployeeDocument(selectedEmpId, { doc_type: newDocType, file_url: dummyUrl });
+      }
+      setNewDocName("");
+      setMessage("Document uploaded successfully!");
+      setTimeout(() => setMessage(""), 3000);
+      loadProfileData();
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to upload document");
+    }
   };
+
+  if (isLoading && documents.length === 0 && !fullName) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-xs text-slate-400 mt-2 font-medium">Loading profile information...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Profile Selector Banner (Admin Only) */}
       {isAdmin && (
-        <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="bg-background border border-slate-200/60 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
               Manage Profile For:
@@ -141,7 +198,7 @@ export default function ProfileView({ user }: ProfileViewProps) {
             >
               {employees.map(emp => (
                 <option key={emp.id} value={emp.id}>
-                  {emp.fullName} ({emp.id})
+                  {emp.full_name} ({emp.employee_code})
                 </option>
               ))}
             </select>
@@ -190,195 +247,204 @@ export default function ProfileView({ user }: ProfileViewProps) {
         </div>
       )}
 
+      {errorMsg && (
+        <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-700 text-xs font-semibold flex items-center gap-2">
+          <ShieldAlert className="w-4 h-4 shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
       {activeTab === "details" ? (
         /* ================= DETAILS TAB ================= */
-        <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm">
+        <div className="bg-background border border-slate-200/60 rounded-2xl p-6 shadow-sm">
           <form onSubmit={handleSave} className="space-y-6">
             <div className="flex items-center gap-4 border-b border-slate-100 pb-4">
-              <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-700 text-base">
-                {fullName.split(" ").map(n => n[0]).join("")}
+              <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-700 text-base border border-slate-200/50">
+                {fullName ? fullName.split(" ").map(n => n[0]).join("") : "U"}
               </div>
               <div>
-                <h3 className="font-bold text-slate-800 text-sm">
-                  {fullName || "Loading Employee..."}
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  ID: {selectedEmpId} • Joined: {targetEmp?.joinedDate}
-                </p>
+                <h3 className="font-bold text-sm text-slate-800">{fullName || "Unnamed Profile"}</h3>
+                <p className="text-xs text-slate-400">{designation || "No Designation Issued"}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Profile details */}
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  disabled={!isAdmin}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 focus:bg-white outline-none transition-all duration-200"
-                />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Column: Profile fields */}
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">
+                  General Info
+                </h4>
 
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={targetEmp?.email || ""}
-                  disabled={true}
-                  className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-500 cursor-not-allowed outline-none"
-                />
-                <span className="text-[9px] text-slate-400 mt-1 block">*Email cannot be changed directly</span>
-              </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    disabled={!isAdmin}
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 focus:bg-white outline-none transition-all duration-200"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Designation
-                </label>
-                <input
-                  type="text"
-                  value={designation}
-                  onChange={(e) => setDesignation(e.target.value)}
-                  disabled={!isAdmin}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 focus:bg-white outline-none transition-all duration-200"
-                />
-              </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Designation
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    disabled={!isAdmin}
+                    value={designation}
+                    onChange={(e) => setDesignation(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 focus:bg-white outline-none transition-all duration-200"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Department
-                </label>
-                <select
-                  value={departmentId}
-                  onChange={(e) => setDepartmentId(e.target.value)}
-                  disabled={!isAdmin}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 focus:bg-white outline-none transition-all duration-200"
-                >
-                  {departments.map(d => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-                </select>
-              </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Department Unit
+                  </label>
+                  <select
+                    disabled={!isAdmin}
+                    value={departmentId}
+                    onChange={(e) => setDepartmentId(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 focus:bg-white outline-none transition-all duration-200"
+                  >
+                    <option value="">No Department Assigned</option>
+                    {departments.map(dept => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              {/* Editable Contact Fields (Always active for self, and for admin) */}
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Phone Number
-                </label>
-                <input
-                  type="text"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all duration-200"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Home Address
-                </label>
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all duration-200"
-                />
-              </div>
-
-              {/* Administration Controls */}
-              {isAdmin && (
-                <>
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                       Employment Status
                     </label>
                     <select
+                      disabled={!isAdmin}
                       value={status}
                       onChange={(e) => setStatus(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all duration-200"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 focus:bg-white outline-none transition-all duration-200"
                     >
                       <option value="active">Active</option>
                       <option value="on_notice">On Notice</option>
                       <option value="terminated">Terminated</option>
                     </select>
                   </div>
-
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      Security Role
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      Portal Security Role
                     </label>
                     <select
+                      disabled={true} // Secure role changes
                       value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all duration-200"
+                      className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-500 outline-none cursor-not-allowed"
                     >
                       <option value="employee">Employee</option>
-                      <option value="admin">HR Admin / Officer</option>
+                      <option value="admin">Administrator</option>
                     </select>
                   </div>
-                </>
-              )}
-            </div>
+                </div>
+              </div>
 
-            {/* Compensation Section */}
-            <div>
-              <h4 className="font-bold text-xs text-slate-700 uppercase tracking-wider mb-3 pt-3 border-t border-slate-100">
-                Salary Structure Details
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                    Basic Salary ($)
-                  </label>
-                  <input
-                    type="number"
-                    value={basicSalary}
-                    onChange={(e) => setBasicSalary(Number(e.target.value))}
-                    disabled={!isAdmin}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 focus:bg-white outline-none transition-all duration-200"
-                  />
+              {/* Right Column: Contact details and Salary structure (Admin edit only) */}
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">
+                    Contact Vault (Writeable)
+                  </h4>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all duration-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      Home Address Location
+                    </label>
+                    <textarea
+                      required
+                      rows={2}
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all duration-200 resize-none"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                    Allowances ($)
-                  </label>
-                  <input
-                    type="number"
-                    value={allowance}
-                    onChange={(e) => setAllowance(Number(e.target.value))}
-                    disabled={!isAdmin}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 focus:bg-white outline-none transition-all duration-200"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                    Deductions ($)
-                  </label>
-                  <input
-                    type="number"
-                    value={deductions}
-                    onChange={(e) => setDeductions(Number(e.target.value))}
-                    disabled={!isAdmin}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 focus:bg-white outline-none transition-all duration-200"
-                  />
+                {/* Salary details (Admin Only) */}
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">
+                    Compensation structure {isAdmin ? "(Edit Mode)" : "(View Only)"}
+                  </h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        Basic Wage
+                      </label>
+                      <input
+                        type="number"
+                        disabled={!isAdmin}
+                        value={basicSalary}
+                        onChange={(e) => setBasicSalary(Number(e.target.value))}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 focus:bg-white outline-none transition-all duration-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        Allowance
+                      </label>
+                      <input
+                        type="number"
+                        disabled={true} // Static calculated on backend or mock
+                        value={allowance}
+                        className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 outline-none cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        Deductions
+                      </label>
+                      <input
+                        type="number"
+                        disabled={!isAdmin}
+                        value={deductions}
+                        onChange={(e) => setDeductions(Number(e.target.value))}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 focus:bg-white outline-none transition-all duration-200"
+                      />
+                    </div>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200/40 flex justify-between items-center text-xs">
+                    <span className="font-bold text-slate-500">Estimated Net Salary:</span>
+                    <span className="font-extrabold text-emerald-600 text-sm">
+                      ${(basicSalary - deductions).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-slate-100">
+            <div className="pt-4 border-t border-slate-100 flex justify-end">
               <button
                 type="submit"
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-md shadow-blue-500/10 active:scale-[0.98] transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-md shadow-blue-500/10 active:scale-[0.98] transition-all cursor-pointer"
               >
                 <Save className="w-3.5 h-3.5" />
-                <span>Save Profile Updates</span>
+                <span>Save Vault Changes</span>
               </button>
             </div>
           </form>
@@ -386,51 +452,20 @@ export default function ProfileView({ user }: ProfileViewProps) {
       ) : (
         /* ================= DOCUMENTS TAB ================= */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm space-y-4">
-            <h3 className="font-bold text-xs text-slate-800 uppercase tracking-wider">
-              Verified Documents Records
-            </h3>
-
-            <div className="divide-y divide-slate-100">
-              {documents.map(doc => (
-                <div key={doc.id} className="py-3 flex items-center justify-between first:pt-0 last:pb-0">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
-                      <FileText className="w-4.5 h-4.5" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-700">{doc.name}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">
-                        Category: {doc.type} • Size: {doc.size} • Uploaded: {doc.uploadedAt}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => alert(`Opening preview for ${doc.name} (mock download)`)}
-                    className="flex items-center gap-1 px-3 py-1.5 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
-                  >
-                    <Eye className="w-3 h-3" />
-                    <span>View / PDF</span>
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm space-y-4 h-fit">
-            <h3 className="font-bold text-xs text-slate-800 uppercase tracking-wider">
-              Upload New Document
-            </h3>
-            
+          {/* Document Upload Area */}
+          <div className="bg-background border border-slate-200/60 rounded-2xl p-6 shadow-sm space-y-4">
+            <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wider">
+              Issue Document Record
+            </h4>
             <form onSubmit={handleUploadDoc} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Document Description
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Record File Name
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Pan_Card_Verification"
+                  placeholder="e.g. ID_Verification"
                   value={newDocName}
                   onChange={(e) => setNewDocName(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all duration-200"
@@ -438,8 +473,8 @@ export default function ProfileView({ user }: ProfileViewProps) {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Document Type
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Document Type Category
                 </label>
                 <select
                   value={newDocType}
@@ -449,18 +484,74 @@ export default function ProfileView({ user }: ProfileViewProps) {
                   <option value="ID Proof">ID Proof</option>
                   <option value="Offer Letter">Offer Letter</option>
                   <option value="Payslip">Payslip</option>
-                  <option value="Tax Form">Tax Form</option>
+                  <option value="Certificate">Certificate</option>
                 </select>
               </div>
 
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 bg-slate-850 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold shadow-md active:scale-[0.98] transition-all cursor-pointer"
               >
                 <Upload className="w-3.5 h-3.5" />
-                <span>Upload Document</span>
+                <span>Upload Metadata File</span>
               </button>
             </form>
+          </div>
+
+          {/* Documents Table */}
+          <div className="lg:col-span-2 bg-background border border-slate-200/60 rounded-2xl p-6 shadow-sm space-y-4 h-fit">
+            <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wider">
+              Document Vault Repository
+            </h4>
+            {documents.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 text-xs">
+                <FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                <p>No document records found in this vault</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-600">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-[10px] uppercase text-slate-400 font-bold">
+                      <th className="py-2.5">Name</th>
+                      <th className="py-2.5">Type</th>
+                      <th className="py-2.5">Uploaded At</th>
+                      <th className="py-2.5 text-right">View</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {documents.map(doc => {
+                      const name = doc.file_url ? doc.file_url.split("/").pop() : "document.pdf";
+                      const dateStr = doc.uploaded_at ? new Date(doc.uploaded_at).toISOString().split("T")[0] : "None";
+                      return (
+                        <tr key={doc.id} className="hover:bg-slate-50/50">
+                          <td className="py-3 font-semibold text-slate-800 max-w-[200px] truncate" title={name}>
+                            {name}
+                          </td>
+                          <td className="py-3">
+                            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-500 font-bold text-[9px] uppercase tracking-wider">
+                              {doc.doc_type}
+                            </span>
+                          </td>
+                          <td className="py-3 text-slate-400">{dateStr}</td>
+                          <td className="py-3 text-right">
+                            <a
+                              href={doc.file_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>Open URL</span>
+                            </a>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}

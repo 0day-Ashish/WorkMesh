@@ -1,29 +1,31 @@
 "use client";
 
 import React, { useState } from "react";
-import { Wrench, RotateCcw, UserCheck, ShieldCheck } from "lucide-react";
-import { Employee, mockStore } from "../mockStore";
+import { Wrench, UserCheck, ShieldCheck } from "lucide-react";
+import { apiClient } from "../apiClient";
 
 interface DemoToolbarProps {
-  currentUser: Employee | null;
-  onUserChanged: (user: Employee) => void;
+  currentUser: any;
+  onUserChanged: () => void;
 }
 
 export default function DemoToolbar({ currentUser, onUserChanged }: DemoToolbarProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const employees = mockStore.getEmployees();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleUserSelect = (empId: string) => {
-    const target = employees.find(e => e.id === empId);
-    if (target) {
-      mockStore.setAuthUser(target);
-      onUserChanged(target);
-    }
-  };
-
-  const handleReset = () => {
-    if (confirm("Reset the simulated database to original values? This deletes all changes in localStorage.")) {
-      mockStore.resetStore();
+  const handleSimulateLogin = async (email: string, role: string) => {
+    setIsLoading(true);
+    setError("");
+    try {
+      const password = role === "admin" ? "AdminPassword123!" : "EmployeePassword123!";
+      await apiClient.auth.signin({ email, password });
+      onUserChanged();
+      setIsOpen(false);
+    } catch (err: any) {
+      setError(err.message || "Simulation failed");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -40,49 +42,58 @@ export default function DemoToolbar({ currentUser, onUserChanged }: DemoToolbarP
 
       {/* Control Drawer */}
       {isOpen && (
-        <div className="absolute bottom-14 right-0 w-72 bg-white rounded-xl shadow-2xl border border-slate-200 p-4 transition-all duration-200 text-slate-800 flex flex-col gap-3.5">
+        <div className="absolute bottom-14 right-0 w-72 bg-background rounded-xl shadow-2xl border border-slate-200 p-4 transition-all duration-200 text-slate-800 flex flex-col gap-3.5">
           <div>
             <h4 className="font-bold text-xs text-slate-800 flex items-center gap-1.5 border-b border-slate-100 pb-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
               <span>Simulate User Accounts</span>
             </h4>
             <p className="text-[10px] text-slate-400 mt-1 leading-normal">
-              Directly swap logins to see how Admin vs. Employee dashboards react in real-time.
+              Click a profile to simulate login using live backend credentials and database roles.
             </p>
           </div>
 
-          {/* User selector */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-              Select Persona
-            </label>
-            <select
-              value={currentUser?.id || ""}
-              onChange={(e) => handleUserSelect(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 transition-colors"
+          {error && (
+            <div className="text-[10px] text-red-500 bg-red-50 p-2 rounded border border-red-100">
+              {error}
+            </div>
+          )}
+
+          {/* Quick login options */}
+          <div className="flex flex-col gap-2">
+            <button
+              disabled={isLoading}
+              onClick={() => handleSimulateLogin("admin@workmesh.com", "admin")}
+              className="flex items-center gap-2.5 px-3 py-2 border border-slate-200 hover:border-blue-400 rounded-lg text-xs font-semibold text-slate-700 hover:bg-blue-50/20 transition-all text-left disabled:opacity-50"
             >
-              {employees
-                .filter(e => e.email) // Show only registered
-                .map(emp => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.fullName} ({emp.role === "admin" ? "HR Admin" : emp.designation})
-                  </option>
-                ))}
-            </select>
+              <div className="w-6 h-6 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-[10px]">
+                AD
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-slate-800 font-bold truncate">Jane Doe (HR Admin)</p>
+                <p className="text-[9px] text-slate-400 truncate">admin@workmesh.com</p>
+              </div>
+            </button>
+
+            <button
+              disabled={isLoading}
+              onClick={() => handleSimulateLogin("employee@workmesh.com", "employee")}
+              className="flex items-center gap-2.5 px-3 py-2 border border-slate-200 hover:border-blue-400 rounded-lg text-xs font-semibold text-slate-700 hover:bg-blue-50/20 transition-all text-left disabled:opacity-50"
+            >
+              <div className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-[10px]">
+                EM
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-slate-800 font-bold truncate">John Smith (Developer)</p>
+                <p className="text-[9px] text-slate-400 truncate">employee@workmesh.com</p>
+              </div>
+            </button>
           </div>
 
-          {/* Reset button */}
-          <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
-            <span className="text-[9px] text-slate-400 font-medium">
-              Active User: {currentUser?.fullName || "None"}
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+            <span className="text-[9px] text-slate-400 font-medium truncate max-w-[200px]">
+              Active: {currentUser?.full_name || currentUser?.fullName || "None"}
             </span>
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 active:bg-red-200 rounded-lg transition-colors border border-red-100"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>Reset DB</span>
-            </button>
           </div>
         </div>
       )}

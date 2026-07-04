@@ -3,10 +3,10 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { Lock, Mail, UserPlus, KeyRound, AlertCircle, Sparkles } from "lucide-react";
-import { Employee, mockStore } from "../mockStore";
+import { apiClient } from "../apiClient";
 
 interface AuthViewsProps {
-  onAuthSuccess: (user: Employee) => void;
+  onAuthSuccess: () => void;
 }
 
 export default function AuthViews({ onAuthSuccess }: AuthViewsProps) {
@@ -17,37 +17,45 @@ export default function AuthViews({ onAuthSuccess }: AuthViewsProps) {
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     if (!email || !password) {
       setError("Please fill in all fields");
       return;
     }
-    const res = mockStore.login(email, password);
-    if (typeof res === "string") {
-      setError(res);
-    } else {
-      onAuthSuccess(res);
+    try {
+      await apiClient.auth.signin({ email, password });
+      onAuthSuccess();
+    } catch (err: any) {
+      setError(err.message || "Invalid email or password");
     }
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     if (!employeeCode || !email || !password) {
       setError("Please fill in all fields");
       return;
     }
-    const res = mockStore.signup(employeeCode, email, password);
-    if (typeof res === "string") {
-      setError(res);
-    } else {
-      onAuthSuccess(res);
+    try {
+      await apiClient.auth.signup({
+        employee_code: employeeCode,
+        email,
+        password
+      });
+      setSuccessMsg("Registration successful! Please check your email to verify your account, then sign in.");
+      setMode("login");
+      setEmail("");
+      setPassword("");
+      setEmployeeCode("");
+    } catch (err: any) {
+      setError(err.message || "Failed to register code");
     }
   };
 
-  const handleForgot = (e: React.FormEvent) => {
+  const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccessMsg("");
@@ -55,24 +63,21 @@ export default function AuthViews({ onAuthSuccess }: AuthViewsProps) {
       setError("Please enter your registered email address");
       return;
     }
-    // Simulate reset
-    const employees = mockStore.getEmployees();
-    const exists = employees.some(emp => emp.email.toLowerCase() === email.toLowerCase());
-    if (!exists) {
-      setError("Email address not found in system roster");
-      return;
+    try {
+      await apiClient.auth.forgotPassword(email);
+      setSuccessMsg("A password reset link has been dispatched to your email address.");
+      setTimeout(() => {
+        setMode("login");
+        setSuccessMsg("");
+        setEmail("");
+      }, 4000);
+    } catch (err: any) {
+      setError(err.message || "Request failed");
     }
-
-    setSuccessMsg("A password reset link has been dispatched to your email address (simulated).");
-    setTimeout(() => {
-      setMode("login");
-      setSuccessMsg("");
-      setEmail("");
-    }, 4000);
   };
 
   return (
-    <div className="flex-1 flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-slate-50 min-h-screen">
+    <div className="flex-1 flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-background min-h-screen">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center items-center gap-2 mb-4">
           <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shadow-md border border-slate-100 shrink-0">

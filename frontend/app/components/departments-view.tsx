@@ -1,94 +1,103 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Edit2, Trash2, Layers, Users, ShieldAlert, CheckCircle2 } from "lucide-react";
-import { Department, Employee, mockStore } from "../mockStore";
+import { Plus, Edit2, Trash2, Layers, Users, CheckCircle2 } from "lucide-react";
+import { apiClient } from "../apiClient";
 
 export default function DepartmentsView() {
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingDept, setEditingDept] = useState<Department | null>(null);
+  const [editingDept, setEditingDept] = useState<any | null>(null);
 
   // Form Fields
   const [name, setName] = useState("");
-  const [code, setCode] = useState("");
   const [managerId, setManagerId] = useState("");
 
   const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const refreshData = () => {
-    setDepartments(mockStore.getDepartments());
-    setEmployees(mockStore.getEmployees());
+  const refreshData = async () => {
+    setIsLoading(true);
+    try {
+      const depts = await apiClient.departments.list();
+      const emps = await apiClient.employees.list();
+      setDepartments(depts);
+      setEmployees(emps);
+    } catch (err) {
+      console.error("Failed to load departments data:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
     refreshData();
   }, []);
 
-  const handleAddDept = (e: React.FormEvent) => {
+  const handleAddDept = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !code) return;
+    if (!name) return;
 
-    const newDept: Department = {
-      id: `dept-${Date.now()}`,
-      name,
-      code: code.toUpperCase(),
-      managerId
-    };
-
-    mockStore.saveDepartment(newDept);
-    setMessage(`Department "${name}" created successfully.`);
-    setName("");
-    setCode("");
-    setManagerId("");
-    setShowAddForm(false);
-    refreshData();
-    setTimeout(() => setMessage(""), 3000);
+    try {
+      await apiClient.departments.create({
+        name,
+        manager_id: managerId || null
+      });
+      setMessage(`Department "${name}" created successfully.`);
+      setName("");
+      setManagerId("");
+      setShowAddForm(false);
+      refreshData();
+      setTimeout(() => setMessage(""), 3000);
+    } catch (err: any) {
+      alert(err.message || "Failed to create department");
+    }
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingDept || !name || !code) return;
+    if (!editingDept || !name) return;
 
-    const updated: Department = {
-      ...editingDept,
-      name,
-      code: code.toUpperCase(),
-      managerId
-    };
-
-    mockStore.saveDepartment(updated);
-    setMessage(`Department "${name}" updated successfully.`);
-    setEditingDept(null);
-    setName("");
-    setCode("");
-    setManagerId("");
-    refreshData();
-    setTimeout(() => setMessage(""), 3000);
+    try {
+      await apiClient.departments.update(editingDept.id, {
+        name,
+        manager_id: managerId || null
+      });
+      setMessage(`Department "${name}" updated successfully.`);
+      setEditingDept(null);
+      setName("");
+      setManagerId("");
+      refreshData();
+      setTimeout(() => setMessage(""), 3000);
+    } catch (err: any) {
+      alert(err.message || "Failed to update department");
+    }
   };
 
-  const handleStartEdit = (dept: Department) => {
+  const handleStartEdit = (dept: any) => {
     setEditingDept(dept);
     setName(dept.name);
-    setCode(dept.code);
-    setManagerId(dept.managerId);
+    setManagerId(dept.manager_id || "");
     setShowAddForm(false);
   };
 
-  const handleDelete = (id: string, name: string) => {
-    // Check if any employees are in this department
-    const inDept = employees.filter(e => e.departmentId === id);
+  const handleDelete = async (id: string, name: string) => {
+    const inDept = employees.filter(e => e.department_id === id);
     if (inDept.length > 0) {
       alert(`Cannot delete department. There are ${inDept.length} employee(s) assigned to this department.`);
       return;
     }
 
     if (confirm(`Are you sure you want to delete the department "${name}"?`)) {
-      mockStore.deleteDepartment(id);
-      setMessage(`Department "${name}" deleted.`);
-      refreshData();
-      setTimeout(() => setMessage(""), 3000);
+      try {
+        await apiClient.departments.delete(id);
+        setMessage(`Department "${name}" deleted.`);
+        refreshData();
+        setTimeout(() => setMessage(""), 3000);
+      } catch (err: any) {
+        alert(err.message || "Failed to delete department");
+      }
     }
   };
 
@@ -96,9 +105,17 @@ export default function DepartmentsView() {
     setShowAddForm(false);
     setEditingDept(null);
     setName("");
-    setCode("");
     setManagerId("");
   };
+
+  if (isLoading && departments.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-xs text-slate-400 mt-2 font-medium">Loading departments directory...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -128,12 +145,12 @@ export default function DepartmentsView() {
 
       {/* Form Area (Add or Edit) */}
       {(showAddForm || editingDept) && (
-        <div className="bg-white border border-slate-200/60 rounded-xl p-5 shadow-sm space-y-4">
+        <div className="bg-background border border-slate-200/60 rounded-xl p-5 shadow-sm space-y-4">
           <h3 className="font-bold text-xs text-slate-800 uppercase tracking-wider">
             {editingDept ? `Edit Department: ${editingDept.name}` : "Create New Department"}
           </h3>
 
-          <form onSubmit={editingDept ? handleSaveEdit : handleAddDept} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <form onSubmit={editingDept ? handleSaveEdit : handleAddDept} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                 Department Name
@@ -150,20 +167,6 @@ export default function DepartmentsView() {
 
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                Department Code
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. DES"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all duration-200"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                 Assign Manager
               </label>
               <select
@@ -174,13 +177,13 @@ export default function DepartmentsView() {
                 <option value="">-- No Manager Assigned --</option>
                 {employees.map(emp => (
                   <option key={emp.id} value={emp.id}>
-                    {emp.fullName} ({emp.designation})
+                    {emp.full_name || "Employee"} ({emp.designation || "No Designation"})
                   </option>
                 ))}
               </select>
             </div>
 
-            <div className="md:col-span-3 flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <div className="md:col-span-2 flex justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={handleCancel}
@@ -202,18 +205,19 @@ export default function DepartmentsView() {
       {/* Grid of Department Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {departments.map(dept => {
-          const count = employees.filter(e => e.departmentId === dept.id).length;
-          const managerName = employees.find(e => e.id === dept.managerId)?.fullName || "Unassigned";
+          const count = employees.filter(e => e.department_id === dept.id).length;
+          const managerName = employees.find(e => e.id === dept.manager_id)?.full_name || "Unassigned";
+          const deptCode = dept.name.substring(0, 3).toUpperCase();
 
           return (
-            <div key={dept.id} className="bg-white border border-slate-200/60 rounded-xl p-5 shadow-sm flex flex-col justify-between hover:border-slate-300 transition-all">
+            <div key={dept.id} className="bg-background border border-slate-200/60 rounded-xl p-5 shadow-sm flex flex-col justify-between hover:border-slate-300 transition-all">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
                     <Layers className="w-4.5 h-4.5" />
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 bg-slate-100 rounded-md font-bold text-slate-500 uppercase tracking-wider">
-                    {dept.code}
+                  <span className="text-[10px] px-2 py-0.5 bg-slate-100 rounded-md font-bold text-slate-500 uppercase tracking-wider font-mono">
+                    {deptCode}
                   </span>
                 </div>
 

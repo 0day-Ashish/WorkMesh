@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WorkMesh - CoreHR Employee Portal",
+  title: "WorkMesh - HR Management Portal",
   description: "Secure, modern, and unified Human Resource Management Portal by WorkMesh.",
 };
 
