@@ -30,9 +30,11 @@ export class EmployeesController {
         throw new NotFoundError('Employee record not found for this user');
       }
 
+      const { phone, address } = req.body;
+
       const updatedEmployee = await prisma.employee.update({
         where: { id: req.user.employee_id },
-        data: req.body,
+        data: { phone, address },
       });
 
       res.status(200).json(updatedEmployee);
@@ -145,6 +147,14 @@ export class EmployeesController {
         where: { id },
         data: req.body,
       });
+
+      // If terminated, immediately revoke associated user's active sessions/refresh tokens
+      if (req.body.status === 'terminated' && updatedEmployee.user_id) {
+        await prisma.refreshToken.updateMany({
+          where: { user_id: updatedEmployee.user_id, revoked_at: null },
+          data: { revoked_at: new Date() },
+        });
+      }
 
       res.status(200).json(updatedEmployee);
     } catch (error) {

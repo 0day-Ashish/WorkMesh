@@ -26,6 +26,7 @@ jest.mock('../src/config/db', () => {
     },
     attendance: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       findMany: jest.fn(),
@@ -214,10 +215,15 @@ describe('WorkMesh Core Modules API Tests', () => {
     });
 
     it('should allow employee to check-out', async () => {
+      mockPrisma.attendance.findFirst.mockResolvedValue({
+        id: 'att-1',
+        check_in: new Date(),
+      });
       mockPrisma.attendance.findUnique.mockResolvedValue({
         id: 'att-1',
         check_in: new Date(),
       });
+
       mockPrisma.attendance.update.mockResolvedValue({
         id: 'att-1',
         check_out: new Date(),

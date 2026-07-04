@@ -24,7 +24,6 @@ export const updateEmployeeSchema = z.object({
 });
 
 export const patchMeSchema = z.object({
-  full_name: z.string().trim().optional(),
   phone: z.string().trim().optional(),
   address: z.string().trim().optional(),
 });

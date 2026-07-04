@@ -1,9 +1,23 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../../config/db';
-import { NotFoundError, ConflictError, BadRequestError } from '../../utils/errors';
+import { NotFoundError, ConflictError, BadRequestError, ForbiddenError } from '../../utils/errors';
 import { RequestStatus } from '@prisma/client';
 
 export class AttendanceController {
+  private static deriveStatus(checkIn: Date, checkOut?: Date): string {
+    if (!checkOut) {
+      return 'Half-day';
+    }
+    const diffMs = checkOut.getTime() - checkIn.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+    return diffHours >= 8 ? 'Present' : 'Half-day';
+  }
+
+  private static isWeekend(date: Date): boolean {
+    const day = date.getDay();
+    return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
+  }
+
   public static async checkIn(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user || !req.user.employee_id) {
@@ -30,7 +44,7 @@ export class AttendanceController {
             employee_id: req.user.employee_id,
             date: today,
             check_in: new Date(),
-            status: 'Present',
+            status: 'Half-day', // default until checkout
           },
         });
       } else {
@@ -41,7 +55,7 @@ export class AttendanceController {
           where: { id: existingRecord.id },
           data: {
             check_in: new Date(),
-            status: 'Present',
+            status: 'Half-day',
           },
         });
       }
@@ -58,27 +72,26 @@ export class AttendanceController {
         throw new NotFoundError('Employee record not found for this user');
       }
 
-      const today = new Date();
-      today.setUTCHours(0, 0, 0, 0);
-
-      const existingRecord = await prisma.attendance.findUnique({
+      const existingRecord = await prisma.attendance.findFirst({
         where: {
-          employee_id_date: {
-            employee_id: req.user.employee_id,
-            date: today,
-          },
+          employee_id: req.user.employee_id,
+          check_out: null,
         },
+        orderBy: { date: 'desc' },
       });
 
-      if (!existingRecord) {
-        throw new NotFoundError('Check-in record not found for today. Please check in first.');
+      if (!existingRecord || !existingRecord.check_in) {
+        throw new NotFoundError('No active check-in session found. Please check in first.');
       }
+
+      const checkoutTime = new Date();
+      const derivedStatus = AttendanceController.deriveStatus(existingRecord.check_in, checkoutTime);
 
       const attendanceRecord = await prisma.attendance.update({
         where: { id: existingRecord.id },
         data: {
-          check_out: new Date(),
-          status: 'Present',
+          check_out: checkoutTime,
+          status: derivedStatus,
         },
       });
 
@@ -88,18 +101,106 @@ export class AttendanceController {
     }
   }
 
+  // GET /attendance/me (Employee views own attendance calendar)
   public static async getOwnAttendance(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user || !req.user.employee_id) {
         throw new NotFoundError('Employee record not found for this user');
       }
 
-      const attendance = await prisma.attendance.findMany({
-        where: { employee_id: req.user.employee_id },
-        orderBy: { date: 'desc' },
+      const { startDate, endDate } = req.query;
+
+      if (!startDate || !endDate) {
+        // Return raw list ordered by date desc if no range query provided
+        const attendance = await prisma.attendance.findMany({
+          where: { employee_id: req.user.employee_id },
+          orderBy: { date: 'desc' },
+        });
+        res.status(200).json(attendance);
+        return;
+      }
+
+      const start = new Date(String(startDate));
+      const end = new Date(String(endDate));
+
+      // 1. Fetch check-in/out records
+      const attendanceRecords = await prisma.attendance.findMany({
+        where: {
+          employee_id: req.user.employee_id,
+          date: { gte: start, lte: end },
+        },
       });
 
-      res.status(200).json(attendance);
+      // 2. Fetch approved leaves in range
+      const approvedLeaves = await prisma.leaveRequest.findMany({
+        where: {
+          employee_id: req.user.employee_id,
+          status: RequestStatus.Approved,
+          OR: [
+            { from_date: { lte: end }, to_date: { gte: start } },
+          ],
+        },
+      });
+
+      // 3. Fetch holidays in range
+      const holidays = await prisma.holiday.findMany({
+        where: {
+          date: { gte: start, lte: end },
+        },
+      });
+
+      // 4. Build daily calendar mapping
+      const result: any[] = [];
+      const tempDate = new Date(start);
+
+      while (tempDate <= end) {
+        const currentDateStr = tempDate.toISOString().split('T')[0];
+        const currentDate = new Date(tempDate);
+
+        // Find attendance row
+        const att = attendanceRecords.find(
+          (a) => a.date.toISOString().split('T')[0] === currentDateStr
+        );
+
+        if (att) {
+          result.push({
+            date: currentDateStr,
+            check_in: att.check_in,
+            check_out: att.check_out,
+            status: att.status,
+          });
+        } else {
+          // Check approved leaves
+          const isOnLeave = approvedLeaves.some(
+            (l) => currentDate >= l.from_date && currentDate <= l.to_date
+          );
+
+          // Check holidays
+          const holiday = holidays.find(
+            (h) => h.date.toISOString().split('T')[0] === currentDateStr
+          );
+
+          let status = 'Absent';
+          if (isOnLeave) {
+            status = 'Leave';
+          } else if (holiday) {
+            status = `Holiday: ${holiday.name}`;
+          } else if (AttendanceController.isWeekend(currentDate)) {
+            status = 'Weekend';
+          }
+
+          result.push({
+            date: currentDateStr,
+            check_in: null,
+            check_out: null,
+            status,
+          });
+        }
+
+        tempDate.setDate(tempDate.getDate() + 1);
+      }
+
+      res.status(200).json(result);
     } catch (error) {
       next(error);
     }
@@ -199,39 +300,47 @@ export class AttendanceController {
         throw new BadRequestError('Regularization request has already been decided');
       }
 
-      const updatedReg = await prisma.attendanceRegularization.update({
-        where: { id },
-        data: {
-          status,
-          reviewed_by: req.user!.id,
-          reviewed_at: new Date(),
-        },
-      });
-
-      if (status === RequestStatus.Approved) {
-        await prisma.attendance.upsert({
-          where: {
-            employee_id_date: {
-              employee_id: reg.employee_id,
-              date: reg.date,
-            },
-          },
-          update: {
-            check_in: reg.requested_check_in,
-            check_out: reg.requested_check_out,
-            status: 'Present',
-          },
-          create: {
-            employee_id: reg.employee_id,
-            date: reg.date,
-            check_in: reg.requested_check_in,
-            check_out: reg.requested_check_out,
-            status: 'Present',
+      await prisma.$transaction(async (tx) => {
+        // 1. Update status
+        await tx.attendanceRegularization.update({
+          where: { id },
+          data: {
+            status,
+            reviewed_by: req.user!.id,
+            reviewed_at: new Date(),
           },
         });
-      }
 
-      res.status(200).json(updatedReg);
+        // 2. If approved, update or create the attendance row
+        if (status === RequestStatus.Approved) {
+          const checkIn = reg.requested_check_in || new Date(reg.date);
+          const checkOut = reg.requested_check_out || undefined;
+          const derivedStatus = AttendanceController.deriveStatus(checkIn, checkOut);
+
+          await tx.attendance.upsert({
+            where: {
+              employee_id_date: {
+                employee_id: reg.employee_id,
+                date: reg.date,
+              },
+            },
+            update: {
+              check_in: reg.requested_check_in,
+              check_out: reg.requested_check_out,
+              status: derivedStatus,
+            },
+            create: {
+              employee_id: reg.employee_id,
+              date: reg.date,
+              check_in: reg.requested_check_in,
+              check_out: reg.requested_check_out,
+              status: derivedStatus,
+            },
+          });
+        }
+      });
+
+      res.status(200).json({ message: `Regularization request has been successfully resolved.` });
     } catch (error) {
       next(error);
     }

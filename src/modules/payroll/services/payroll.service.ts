@@ -11,7 +11,13 @@ export class PayrollService {
     });
   }
 
-  public static async createPayroll(data: { employeeId: string, month: number, year: number, basicSalary: number, deductions: number }) {
+  public static async upsertPayroll(data: {
+    employeeId: string;
+    month: number;
+    year: number;
+    basicSalary: number;
+    deductions: number;
+  }) {
     const netSalary = data.basicSalary - data.deductions;
 
     return prisma.payroll.upsert({

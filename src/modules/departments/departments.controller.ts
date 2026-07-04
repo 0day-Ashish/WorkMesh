@@ -99,9 +99,16 @@ export class DepartmentsController {
         throw new NotFoundError('Department not found');
       }
 
-      await prisma.department.delete({
-        where: { id },
-      });
+      // Safe deletion: nullify employee links in transaction
+      await prisma.$transaction([
+        prisma.employee.updateMany({
+          where: { department_id: id },
+          data: { department_id: null },
+        }),
+        prisma.department.delete({
+          where: { id },
+        }),
+      ]);
 
       res.status(200).json({ message: 'Department successfully deleted' });
     } catch (error) {

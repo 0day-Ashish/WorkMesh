@@ -3,7 +3,7 @@ import { PayrollController } from '../controllers/payroll.controller';
 import { authMiddleware } from '../../../middlewares/authMiddleware';
 import { requireRole } from '../../../middlewares/roleMiddleware';
 import { validateBody } from '../../../middlewares/validateMiddleware';
-import { createPayrollSchema } from '../validators/payroll.schema';
+import { upsertPayrollSchema } from '../validators/payroll.schema';
 
 const router = Router();
 
@@ -15,6 +15,6 @@ router.get('/me', requireRole(['employee', 'admin']), PayrollController.getMyPay
 
 // Admin routes
 router.get('/:employeeId', requireRole(['admin']), PayrollController.getEmployeePayroll);
-router.post('/', requireRole(['admin']), validateBody(createPayrollSchema), PayrollController.createPayroll);
+router.put('/:employeeId', requireRole(['admin']), validateBody(upsertPayrollSchema), PayrollController.upsertPayroll);
 
 export default router;

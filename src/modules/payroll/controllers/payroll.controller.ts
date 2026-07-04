@@ -26,11 +26,18 @@ export class PayrollController {
     }
   }
 
-  public static async createPayroll(req: Request, res: Response, next: NextFunction) {
+  public static async upsertPayroll(req: Request, res: Response, next: NextFunction) {
     try {
-      const { employeeId, month, year, basicSalary, deductions } = req.body;
-      const payroll = await PayrollService.createPayroll({ employeeId, month, year, basicSalary, deductions });
-      res.status(201).json(payroll);
+      const { employeeId } = req.params;
+      const { month, year, basicSalary, deductions } = req.body;
+      const payroll = await PayrollService.upsertPayroll({
+        employeeId,
+        month,
+        year,
+        basicSalary,
+        deductions,
+      });
+      res.status(200).json(payroll);
     } catch (error) {
       next(error);
     }
