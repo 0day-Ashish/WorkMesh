@@ -583,7 +583,6 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
 
           <div className="border-t border-slate-200 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-400 font-mono">
             <p>&copy; {new Date().getFullYear()} WorkMesh Inc. All rights reserved.</p>
-            <p>Portal Build v2.0.1 (Production-Ready)</p>
           </div>
         </div>
       </footer>
