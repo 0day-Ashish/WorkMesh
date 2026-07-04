@@ -68,10 +68,6 @@ export default function ChatbotWidget() {
           className="w-12 h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-full border border-black shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer group relative"
         >
           <MessageSquare className="w-5 h-5 group-hover:rotate-6 transition-transform" />
-          <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border border-white"></span>
-          </span>
         </button>
       )}
 
@@ -81,15 +77,8 @@ export default function ChatbotWidget() {
           {/* Header */}
           <div className="bg-slate-900 text-white px-4 py-3.5 border-b border-black flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center border border-blue-500">
-                <Bot className="w-4 h-4 text-white" />
-              </div>
               <div>
                 <p className="text-xs font-black uppercase tracking-wider leading-none">WorkMesh Assistant</p>
-                <p className="text-[9px] text-slate-400 font-bold uppercase mt-1 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Grok Engine Active
-                </p>
               </div>
             </div>
             <button
@@ -103,6 +92,7 @@ export default function ChatbotWidget() {
           {/* Message History */}
           <div
             ref={scrollRef}
+            data-lenis-prevent
             className="flex-1 p-4 max-h-[350px] min-h-[250px] overflow-y-auto bg-slate-50 space-y-3"
           >
             {messages.map((msg, index) => (
