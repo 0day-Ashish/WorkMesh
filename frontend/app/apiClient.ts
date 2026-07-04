@@ -63,7 +63,11 @@ export function getLoggedInUserRole(): "admin" | "employee" | null {
 
 // Unified request handler
 async function request(endpoint: string, options: RequestInit = {}): Promise<any> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  let base = API_BASE_URL;
+  if (!base.endsWith("/api") && !base.endsWith("/api/")) {
+    base = base.endsWith("/") ? `${base}api` : `${base}/api`;
+  }
+  const url = `${base}${endpoint}`;
   
   // Set headers
   const headers = new Headers(options.headers || {});

@@ -269,7 +269,7 @@ export default function PayrollView({ user }: PayrollViewProps) {
 
             <button
               onClick={handlePrint}
-              className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-650 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-md transition-all cursor-pointer font-sans"
+              className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white border border-black rounded-lg text-xs font-semibold shadow-md transition-all cursor-pointer font-sans"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print Payslip</span>
